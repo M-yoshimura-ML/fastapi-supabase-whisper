@@ -1,0 +1,7 @@
+*.png
+*.jpg
+*.db
+.venv
+.idea
+__pycache__
+.env
