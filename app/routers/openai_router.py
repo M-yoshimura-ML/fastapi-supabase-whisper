@@ -1,5 +1,6 @@
 from dotenv import load_dotenv
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, UploadFile, File, Form
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 import openai
 import os
@@ -51,3 +52,19 @@ async def translate_text(data: TranslateRequest):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/transcribe")
+async def transcribe_audio(audio_file: UploadFile = File(...), language: str = Form(None)):
+    try:
+        contents = await audio_file.read()
+        response = openai.audio.transcriptions.create(
+            model="whisper-1",
+            file=(audio_file.filename, contents),
+            language=language
+        )
+        return {"transcription": response.text}
+
+    except Exception as e:
+        raise JSONResponse(status_code=500, contents={"error": str(e)})
+
