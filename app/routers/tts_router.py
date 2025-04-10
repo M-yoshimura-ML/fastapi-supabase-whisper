@@ -1,0 +1,27 @@
+import io
+
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
+from fastapi.responses import StreamingResponse
+from gtts import gTTS
+
+router = APIRouter()
+
+
+class TTSRequest(BaseModel):
+    text: str
+    language: str = "ja"
+
+
+@router.post("/tts")
+async def text_to_speech(data: TTSRequest):
+    try:
+        tts = gTTS(text=data.text, lang=data.language)
+        fp = io.BytesIO()
+        tts.write_to_fp(fp)
+        fp.seek(0)
+        return StreamingResponse(fp, media_type="audio/mpeg")
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
