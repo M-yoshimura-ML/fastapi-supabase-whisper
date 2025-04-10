@@ -16,6 +16,11 @@ class ChatRequest(BaseModel):
     language: str = "ja"
 
 
+class TranslateRequest(BaseModel):
+    text: str
+    target_language: str
+
+
 @router.post("/chat")
 async def chat_with_gpt(data: ChatRequest):
     try:
@@ -28,6 +33,21 @@ async def chat_with_gpt(data: ChatRequest):
         )
         reply = response.choices[0].message.content
         return {"reply": reply}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/translate")
+async def translate_text(data: TranslateRequest):
+    try:
+        prompt = f"translate below sentences to {data.target_language}. \n\n{data.text}"
+        response = openai.chat.completions.create(
+            model="gpt-4-0613",
+            messages=[{"role": "user", "content": prompt}]
+        )
+        translated_text = response.choices[0].message.content
+        return {"translated_text": translated_text}
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
