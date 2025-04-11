@@ -16,7 +16,6 @@ class Message(Base):
     content = Column(String, nullable=False)
     translated_content = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.now)
-    messages = relationship("Message", back_populates="conversation")
 
     __table_args__ = (
         CheckConstraint("role in ('user', 'assistant')", name="valid_role"),
