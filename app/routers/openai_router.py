@@ -11,6 +11,7 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 
 router = APIRouter()
 
+
 class ChatRequest(BaseModel):
     message: str
     history: list
