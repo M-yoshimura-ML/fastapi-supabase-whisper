@@ -4,9 +4,9 @@ import logging
 from fastapi import FastAPI, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db import async_session
+from app.db import async_session, engine, Base
 from app.dtos.user_dto import UserResponse, UserCreate
-from app.routers import user_router, openai_router, tts_router
+from app.routers import user_router, openai_router, tts_router, history_router
 from app.service.user_service import create_user, get_users
 
 app = FastAPI()
@@ -22,6 +22,7 @@ logging = logging.getLogger(__name__)
 app.include_router(user_router.router)
 app.include_router(openai_router.router)
 app.include_router(tts_router.router)
+app.include_router(history_router.router)
 
 
 async def get_db():
