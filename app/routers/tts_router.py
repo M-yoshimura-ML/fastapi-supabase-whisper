@@ -5,6 +5,8 @@ from pydantic import BaseModel
 from fastapi.responses import StreamingResponse
 from gtts import gTTS
 
+from app.service.gtts_service import create_audio_and_upload
+
 router = APIRouter()
 
 
@@ -24,4 +26,10 @@ async def text_to_speech(data: TTSRequest):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/tts-api")
+async def tts_api(data: TTSRequest):
+    url = create_audio_and_upload(data.text, data.language)
+    return {"audio_url": url}
 
