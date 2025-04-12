@@ -87,6 +87,7 @@ async def get_user_history(user_id: uuid.UUID, session: AsyncSession = Depends(g
                         "role": msg.role,
                         "content": msg.content,
                         "translated_content": msg.translated_content,
+                        "audio_url": msg.audio_url,
                         "created_at": msg.created_at
                     } for msg in messages
                 ]
