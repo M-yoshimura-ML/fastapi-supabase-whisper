@@ -15,6 +15,7 @@ class Message(Base):
     role = Column(String, nullable=False)
     content = Column(String, nullable=False)
     translated_content = Column(String, nullable=True)
+    audio_url = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.now)
 
     __table_args__ = (
