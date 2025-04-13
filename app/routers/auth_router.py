@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db import get_db
 from app.models import User
-from app.service.auth_service import hash_password, verify_password, create_access_token
+from app.service.auth_service import hash_password, verify_password, create_access_token, get_current_user
 from pydantic import BaseModel
 
 
@@ -54,3 +54,19 @@ async def login(request: LoginRequest, db: AsyncSession = Depends(get_db)):
 
     token = create_access_token({"sub": str(user.id)})
     return {"access_token": token, "token_type": "Bearer"}
+
+
+@router.post("/refresh-token")
+def refresh_token(current_user: User = Depends(get_current_user)):
+    new_token = create_access_token({"sub": str(current_user.id)})
+    return {"access_token": new_token, "token_type": "Bearer"}
+
+
+@router.get("/auth-me")
+def get_auth_me(current_user: User = Depends(get_current_user)):
+    return {
+        "id": current_user.id,
+        "email": current_user.email,
+        "created_at": current_user.created_at
+    }
+
