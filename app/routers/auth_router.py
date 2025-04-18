@@ -3,6 +3,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db import get_db
+from app.dtos.response_dto import api_response
 from app.models import User
 from app.service.auth_service import hash_password, verify_password, create_access_token, get_current_user
 from pydantic import BaseModel
@@ -27,10 +28,10 @@ async def signup(request: SignUpRequest, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).where(User.email == request.email))
     user = result.scalar_one_or_none()
     if user:
-        raise HTTPException(status_code=400, detail="Email already registered")
+        return api_response(400, "Email already registered")
 
     if request.password is None or len(request.password) < 8:
-        raise HTTPException(status_code=400, detail="Password length should be more than 8 characters")
+        return api_response(400, "Password length should be more than 8 characters")
 
     user = User(
         name=request.name,
@@ -42,7 +43,7 @@ async def signup(request: SignUpRequest, db: AsyncSession = Depends(get_db)):
     await db.commit()
     await db.refresh(user)
 
-    return {"message": "User created successfully"}
+    return api_response(200, "signup success")
 
 
 @router.post("/login")

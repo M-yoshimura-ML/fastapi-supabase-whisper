@@ -3,6 +3,7 @@ from typing import List
 import logging
 from fastapi import FastAPI, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.middleware.cors import CORSMiddleware
 
 from app.db import get_db
 from app.dtos.user_dto import UserResponse, UserCreate
@@ -25,6 +26,18 @@ app.include_router(tts_router.router)
 app.include_router(history_router.router)
 app.include_router(auth_router.router)
 
+origins = [
+    "http://localhost:3000",  # Next.js server URL
+    "http://localhost:3001",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.post("/user/", response_model=UserResponse)
 async def post_message(data: UserCreate, db: AsyncSession = Depends(get_db)):
