@@ -10,6 +10,8 @@ from app.models.message import Message
 import uuid
 from datetime import datetime
 
+from app.service.openai_service import generate_title
+
 router = APIRouter()
 
 
@@ -22,17 +24,24 @@ class MessageCreate(BaseModel):
     role: str
     content: str
     translated_content: str | None = None
+    audio_url: str | None
 
 
 class HistoryCreate(BaseModel):
     user_id: uuid.UUID
-    title: str
+    title: str | None
     messages: List[MessageCreate]
 
 
 @router.post("/history")
 async def save_history(data: HistoryCreate, session: AsyncSession = Depends(get_session)):
     try:
+        if not data.title:
+            all_texts = [m.content for m in data.messages if m.role == "user"]
+            # ToDo get language setting
+            auto_title = await generate_title(all_texts, language="ja")
+            data.title = auto_title
+
         conversation = Conversation(
             id=uuid.uuid4(),
             user_id=data.user_id,
@@ -51,6 +60,7 @@ async def save_history(data: HistoryCreate, session: AsyncSession = Depends(get_
                 role=m.role,
                 content=m.content,
                 translated_content=m.translated_content,
+                audio_url=m.audio_url,
                 created_at=datetime.now()
             )
             session.add(message)
