@@ -51,7 +51,6 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession
     if payload is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="invalid token")
 
-    # user = db.query(User).filter(User.id == payload.get("sub")).first()
     result = await db.execute(select(User).where(User.id == payload.get("sub")))
     user = result.scalar_one_or_none()
     if user is None:

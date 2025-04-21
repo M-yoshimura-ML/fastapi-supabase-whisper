@@ -43,7 +43,7 @@ async def signup(request: SignUpRequest, db: AsyncSession = Depends(get_db)):
     await db.commit()
     await db.refresh(user)
 
-    return api_response(200, "signup success")
+    return api_response(200, "success")
 
 
 @router.post("/login")
@@ -51,16 +51,18 @@ async def login(request: LoginRequest, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).where(User.email == request.email))
     user = result.scalar_one_or_none()
     if not user or not verify_password(request.password, user.password):
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+        return api_response(401, "Invalid credentials")
 
     token = create_access_token({"sub": str(user.id)})
-    return {"access_token": token, "token_type": "Bearer"}
+    data = {"access_token": token, "token_type": "Bearer"}
+    return api_response(200, "success", data)
 
 
 @router.post("/refresh-token")
 def refresh_token(current_user: User = Depends(get_current_user)):
     new_token = create_access_token({"sub": str(current_user.id)})
-    return {"access_token": new_token, "token_type": "Bearer"}
+    data = {"access_token": new_token, "token_type": "Bearer"}
+    return api_response(200, "success", data)
 
 
 @router.get("/auth-me")
