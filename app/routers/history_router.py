@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
 from app.db import async_session
+from app.dtos.response_dto import api_response
 from app.models.conversation import Conversation
 from app.models.message import Message
 import uuid
@@ -66,7 +67,7 @@ async def save_history(data: HistoryCreate, session: AsyncSession = Depends(get_
             session.add(message)
 
         await session.commit()
-        return {"conversation_id": str(conversation.id)}
+        return api_response(200, "success", {"conversation_id": str(conversation.id)})
 
     except Exception as e:
         await session.rollback()
@@ -103,7 +104,29 @@ async def get_user_history(user_id: uuid.UUID, session: AsyncSession = Depends(g
                 ]
             })
 
-        return history
+        return api_response(200, "success", history)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/user-conversations")
+async def get_user_conversations(user_id: uuid.UUID, session: AsyncSession = Depends(get_session)):
+    try:
+        result = await session.execute(
+            select(Conversation).where(Conversation.user_id == user_id).order_by(Conversation.created_at.desc())
+        )
+        conversations = result.scalars().all()
+
+        response_data = []
+        for conv in conversations:
+            response_data.append({
+                "id": str(conv.id),
+                "title": conv.title,
+                "userId": str(conv.user_id),
+                "createdAt": conv.created_at.isoformat(),
+            })
+
+        return api_response(200, "success", response_data)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

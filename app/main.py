@@ -1,14 +1,15 @@
-from typing import List
-
 import logging
-from fastapi import FastAPI, Depends
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import FastAPI, HTTPException
+from fastapi.exceptions import RequestValidationError
+
 from starlette.middleware.cors import CORSMiddleware
 
-from app.db import get_db
-from app.dtos.user_dto import UserResponse, UserCreate
 from app.routers import user_router, openai_router, tts_router, history_router, auth_router
-from app.service.user_service import create_user, get_users
+from app.routers.exception_handler import (
+    custom_http_exception_handler,
+    validation_exception_handler,
+    general_exception_handler
+)
 
 app = FastAPI()
 logging = logging.getLogger(__name__)
@@ -18,6 +19,10 @@ logging = logging.getLogger(__name__)
 #     async with engine.begin() as conn:
 #         await conn.run_sync(Base.metadata.create_all)
 
+# custom exception handlers
+app.add_exception_handler(HTTPException, custom_http_exception_handler)
+app.add_exception_handler(RequestValidationError, validation_exception_handler)
+app.add_exception_handler(Exception, general_exception_handler)
 
 # include your routers
 app.include_router(user_router.router)
@@ -38,14 +43,3 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-@app.post("/user/", response_model=UserResponse)
-async def post_message(data: UserCreate, db: AsyncSession = Depends(get_db)):
-    logging.info(f"received data: {data}")
-    return await create_user(db, data)
-
-
-@app.get("/users/", response_model=List[UserResponse])
-async def read_messages(limit: int = 10, db: AsyncSession = Depends(get_db)):
-    return await get_users(db, limit)
-
