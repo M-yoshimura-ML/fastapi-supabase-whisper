@@ -6,19 +6,16 @@ from sqlalchemy.future import select
 
 from app.db import async_session
 from app.dtos.response_dto import api_response
+from app.models import User
 from app.models.conversation import Conversation
 from app.models.message import Message
 import uuid
 from datetime import datetime
-
+from app.db import get_db
+from app.service.auth_service import get_current_user
 from app.service.openai_service import generate_title
 
 router = APIRouter()
-
-
-async def get_session() -> AsyncSession:
-    async with async_session() as session:
-        yield session
 
 
 class MessageCreate(BaseModel):
@@ -35,7 +32,10 @@ class HistoryCreate(BaseModel):
 
 
 @router.post("/history")
-async def save_history(data: HistoryCreate, session: AsyncSession = Depends(get_session)):
+async def save_history(
+        data: HistoryCreate,
+        session: AsyncSession = Depends(get_db),
+        current_user: User = Depends(get_current_user)):
     try:
         if not data.title:
             all_texts = [m.content for m in data.messages if m.role == "user"]
@@ -75,7 +75,10 @@ async def save_history(data: HistoryCreate, session: AsyncSession = Depends(get_
 
 
 @router.get("/history/{user_id}")
-async def get_user_history(user_id: uuid.UUID, session: AsyncSession = Depends(get_session)):
+async def get_user_history(
+        user_id: uuid.UUID,
+        session: AsyncSession = Depends(get_db),
+        current_user: User = Depends(get_current_user)):
     try:
         result = await session.execute(
             select(Conversation).where(Conversation.user_id == user_id).order_by(Conversation.created_at.desc())
@@ -110,7 +113,10 @@ async def get_user_history(user_id: uuid.UUID, session: AsyncSession = Depends(g
 
 
 @router.get("/user-conversations")
-async def get_user_conversations(user_id: uuid.UUID, session: AsyncSession = Depends(get_session)):
+async def get_user_conversations(
+        user_id: uuid.UUID,
+        session: AsyncSession = Depends(get_db),
+        current_user: User = Depends(get_current_user)):
     try:
         result = await session.execute(
             select(Conversation).where(Conversation.user_id == user_id).order_by(Conversation.created_at.desc())
@@ -124,6 +130,34 @@ async def get_user_conversations(user_id: uuid.UUID, session: AsyncSession = Dep
                 "title": conv.title,
                 "userId": str(conv.user_id),
                 "createdAt": conv.created_at.isoformat(),
+            })
+
+        return api_response(200, "success", response_data)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/conversation-messages")
+async def get_conversation_messages(
+        conversation_id: uuid.UUID,
+        session: AsyncSession = Depends(get_db),
+        current_user: User = Depends(get_current_user)):
+    try:
+        result = await session.execute(
+            select(Message).where(Message.conversation_id == conversation_id).order_by(Message.created_at.asc())
+        )
+        messages = result.scalars().all()
+
+        response_data = []
+        for message in messages:
+            response_data.append({
+                "id": str(message.id),
+                "role": message.role,
+                "content": message.content,
+                "translatedContent": message.translated_content,
+                "conversationId": str(message.conversation_id),
+                "audioUrl": message.audio_url,
+                "createdAt": message.created_at.isoformat(),
             })
 
         return api_response(200, "success", response_data)
