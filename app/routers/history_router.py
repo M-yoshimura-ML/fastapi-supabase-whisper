@@ -1,9 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
-from typing import List
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
+from app.dtos.history_dto import HistoryCreate, MessagesCreate
 from app.dtos.response_dto import api_response
 from app.models import User
 from app.models.conversation import Conversation
@@ -12,27 +11,10 @@ import uuid
 from datetime import datetime
 from app.db import get_db
 from app.service.auth_service import get_current_user
+from app.service.history_service import HistoryService
 from app.service.openai_service import generate_title
 
 router = APIRouter()
-
-
-class MessageBase(BaseModel):
-    role: str
-    content: str
-    translatedContent: str | None = None
-    audioUrl: str | None
-
-
-class HistoryCreate(BaseModel):
-    userId: uuid.UUID
-    title: str | None
-    messages: List[MessageBase]
-
-
-class MessagesCreate(BaseModel):
-    conversationId: str
-    messages: List[MessageBase]
 
 
 @router.post("/history")
@@ -47,6 +29,8 @@ async def save_history(
             auto_title = await generate_title(all_texts, language="ja")
             data.title = auto_title
 
+        history_service = HistoryService()
+
         conversation = Conversation(
             id=uuid.uuid4(),
             user_id=data.userId,
@@ -58,19 +42,8 @@ async def save_history(
         # reflect conversation.id in DB
         await session.flush()
 
-        for m in data.messages:
-            message = Message(
-                id=uuid.uuid4(),
-                conversation_id=conversation.id,
-                role=m.role,
-                content=m.content,
-                translated_content=m.translatedContent,
-                audio_url=m.audioUrl,
-                created_at=datetime.now()
-            )
-            session.add(message)
+        await history_service.save_messages(data.messages, conversation.id, session)
 
-        await session.commit()
         return api_response(200, "success", {"conversation_id": str(conversation.id)})
 
     except Exception as e:
@@ -80,36 +53,13 @@ async def save_history(
 
 @router.get("/history/{user_id}")
 async def get_user_history(
-        user_id: uuid.UUID,
+        user_id: str,
         session: AsyncSession = Depends(get_db),
         current_user: User = Depends(get_current_user)):
     try:
-        result = await session.execute(
-            select(Conversation).where(Conversation.user_id == user_id).order_by(Conversation.created_at.desc())
-        )
-        conversations = result.scalars().all()
-
-        history = []
-        for conv in conversations:
-            conv_result = await session.execute(
-                select(Message).where(Message.conversation_id == conv.id).order_by(Message.created_at)
-            )
-            messages = conv_result.scalars().all()
-
-            history.append({
-                "conversationId": str(conv.id),
-                "title": conv.title,
-                "createdAt": conv.created_at,
-                "messages": [
-                    {
-                        "role": msg.role,
-                        "content": msg.content,
-                        "translatedContent": msg.translated_content,
-                        "audioUrl": msg.audio_url,
-                        "createdAt": msg.created_at
-                    } for msg in messages
-                ]
-            })
+        history_service = HistoryService()
+        conversations = await history_service.get_user_conversations(user_id, session)
+        history = await history_service.get_history(conversations, session)
 
         return api_response(200, "success", history)
     except Exception as e:
@@ -118,53 +68,28 @@ async def get_user_history(
 
 @router.get("/user-conversations")
 async def get_user_conversations(
-        user_id: uuid.UUID,
+        user_id: str,
         session: AsyncSession = Depends(get_db),
         current_user: User = Depends(get_current_user)):
     try:
-        result = await session.execute(
-            select(Conversation).where(Conversation.user_id == user_id).order_by(Conversation.created_at.desc())
-        )
-        conversations = result.scalars().all()
+        history_service = HistoryService()
+        conversation_list = await history_service.get_conversation_list(user_id, session)
 
-        response_data = []
-        for conv in conversations:
-            response_data.append({
-                "id": str(conv.id),
-                "title": conv.title,
-                "userId": str(conv.user_id),
-                "createdAt": conv.created_at.isoformat(),
-            })
-
-        return api_response(200, "success", response_data)
+        return api_response(200, "success", conversation_list)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/conversation-messages")
 async def get_conversation_messages(
-        conversation_id: uuid.UUID,
+        conversation_id: str,
         session: AsyncSession = Depends(get_db),
         current_user: User = Depends(get_current_user)):
     try:
-        result = await session.execute(
-            select(Message).where(Message.conversation_id == conversation_id).order_by(Message.created_at.asc())
-        )
-        messages = result.scalars().all()
+        history_service = HistoryService()
+        message_list = await history_service.get_message_list(conversation_id, session)
 
-        response_data = []
-        for message in messages:
-            response_data.append({
-                "id": str(message.id),
-                "role": message.role,
-                "content": message.content,
-                "translatedContent": message.translated_content,
-                "conversationId": str(message.conversation_id),
-                "audioUrl": message.audio_url,
-                "createdAt": message.created_at.isoformat(),
-            })
-
-        return api_response(200, "success", response_data)
+        return api_response(200, "success", message_list)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -175,26 +100,13 @@ async def save_messages(
         session: AsyncSession = Depends(get_db),
         current_user: User = Depends(get_current_user)):
     try:
-        result = await session.execute(
-            select(Conversation).where(Conversation.id == data.conversationId)
-        )
-        conversation = result.scalars().all()
+        history_service = HistoryService()
+        conversation = await history_service.get_conversation(data.conversationId, session)
         if not conversation:
             return api_response(400, "Invalid conversationId")
 
-        for m in data.messages:
-            message = Message(
-                id=uuid.uuid4(),
-                conversation_id=data.conversationId,
-                role=m.role,
-                content=m.content,
-                translated_content=m.translatedContent,
-                audio_url=m.audioUrl,
-                created_at=datetime.now()
-            )
-            session.add(message)
+        await history_service.save_messages(data.messages, data.conversationId, session)
 
-        await session.commit()
         return api_response(200, "success")
 
     except Exception as e:
