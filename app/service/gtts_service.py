@@ -7,7 +7,7 @@ import uuid
 import time
 import logging
 
-from app.service.openai_service import generate_openai_tts
+from app.service.openai_service import OpenAIService
 
 load_dotenv()
 SUPABASE_URL = os.getenv("SUPABASE_URL")
@@ -55,7 +55,8 @@ async def upload_to_supabase_async(filepath: str, bucket: str) -> str:
 async def create_audio_and_upload(text: str, lang: str = "ja", bucket: str = "ai-speak") -> str:
     start = time.time()
     # mp3_file = await generate_audio_async(text, lang)
-    mp3_file = await generate_openai_tts(text)
+    openai_service = OpenAIService()
+    mp3_file = await openai_service.generate_openai_tts(text)
     logger.info(f"TTS Generate: {time.time() - start:.2f} sec")
     try:
         start_upload = time.time()

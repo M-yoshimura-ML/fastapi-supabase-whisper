@@ -2,7 +2,7 @@ from starlette.responses import JSONResponse
 from typing import List, Optional
 
 
-def api_response(status: int, message: str = None, data: Optional[dict | List] = None):
+def api_response(status: int, message: str = None, data: Optional[dict | List | str] = None):
     return JSONResponse(
         status_code=status,
         content={

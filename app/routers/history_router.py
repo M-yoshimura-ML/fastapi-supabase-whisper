@@ -1,18 +1,16 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
 
 from app.dtos.history_dto import HistoryCreate, MessagesCreate
 from app.dtos.response_dto import api_response
 from app.models import User
 from app.models.conversation import Conversation
-from app.models.message import Message
 import uuid
 from datetime import datetime
 from app.db import get_db
 from app.service.auth_service import get_current_user
 from app.service.history_service import HistoryService
-from app.service.openai_service import generate_title
+from app.service.openai_service import OpenAIService
 
 router = APIRouter()
 
@@ -23,10 +21,11 @@ async def save_history(
         session: AsyncSession = Depends(get_db),
         current_user: User = Depends(get_current_user)):
     try:
+        openai_service = OpenAIService()
         if not data.title:
             all_texts = [m.content for m in data.messages if m.role == "user"]
             # ToDo get language setting
-            auto_title = await generate_title(all_texts, language="ja")
+            auto_title = await openai_service.generate_title(all_texts, language="en")
             data.title = auto_title
 
         history_service = HistoryService()

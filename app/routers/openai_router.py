@@ -13,7 +13,7 @@ from app.dtos.response_dto import api_response
 from app.models import User
 from app.service.auth_service import get_current_user
 from app.service.gtts_service import create_audio_and_upload
-from app.service.openai_service import chat_with_gpt, translate_text
+from app.service.openai_service import OpenAIService
 from app.utils.string_utils import StringUtils
 
 load_dotenv()
@@ -27,7 +27,8 @@ router = APIRouter()
 @router.post("/chat")
 async def chat(data: ChatRequest, current_user: User = Depends(get_current_user)):
     try:
-        reply = await chat_with_gpt(data)
+        openai_service = OpenAIService()
+        reply = await openai_service.chat_with_history(data)
         return api_response(200, "success", reply)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -36,7 +37,8 @@ async def chat(data: ChatRequest, current_user: User = Depends(get_current_user)
 @router.post("/translate")
 async def translate(data: TranslateRequest, current_user: User = Depends(get_current_user)):
     try:
-        translated_text = await translate_text(data.text, data.target_language)
+        openai_service = OpenAIService()
+        translated_text = await openai_service.translate_text(data.text, data.target_language)
         return api_response(200, "success", translated_text)
 
     except Exception as e:
@@ -49,16 +51,12 @@ async def transcribe_audio(
         language: str = Form(None),
         current_user: User = Depends(get_current_user)):
     try:
-        contents = await audio_file.read()
-        response = openai.audio.transcriptions.create(
-            model="whisper-1",
-            file=(audio_file.filename, contents),
-            language=language
-        )
-        return api_response(200, "success", response.text)
+        openai_service = OpenAIService()
+        response_text = await openai_service.transcribe(audio_file, language)
+        return api_response(200, "success", response_text)
 
     except Exception as e:
-        raise JSONResponse(status_code=500, contents={"error": str(e)})
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/text-chat")
@@ -69,14 +67,15 @@ async def text_chat(
     logger.info("💬 Chat API called")
 
     try:
+        openai_service = OpenAIService()
         # Call OpenAI
         openai_start = time.time()
-        reply = await chat_with_gpt(payload)
+        reply = await openai_service.chat_with_history(payload)
         logger.info(f"🧠 OpenAI response time: {time.time() - openai_start:.2f} sec")
 
         # Translate
         translate_start = time.time()
-        translated_text = await translate_text(reply, payload.language)
+        translated_text = await openai_service.translate_text(reply, payload.language)
         logger.info(f"🌍 Translation time: {time.time() - translate_start:.2f} sec")
 
         # TTS
@@ -105,43 +104,26 @@ async def voice_chat(
     language: str = Form("ja"),  # or auto-detect
     current_user: User = Depends(get_current_user)
 ):
+    openai_service = OpenAIService()
     start_time = time.time()
     logger.info("💬 Voice Chat API called")
 
     try:
         transcribe_start = time.time()
-        contents = await audio_file.read()
-
         # 1. Transcribe
-        transcribed = openai.audio.transcriptions.create(
-            model="whisper-1",
-            file=(audio_file.filename, contents),
-            language=language
-        )
-        user_text = transcribed.text
+        user_text = await openai_service.transcribe(audio_file, language)
         logger.info(f"🧠 OpenAI transcribe time: {time.time() - transcribe_start:.2f} sec")
 
         chat_start = time.time()
-
         # 2. Chat
-        chat_response = openai.chat.completions.create(
-            model="gpt-4-0613",
-            messages=[{"role": "user", "content": user_text}],
-        )
-        reply_text = chat_response.choices[0].message.content
+        reply_text = await openai_service.chat_with_text(user_text)
         logger.info(f"🧠 OpenAI chat time: {time.time() - chat_start:.2f} sec")
 
         tts_start = time.time()
         # 3. TTS
-        speech_response = openai.audio.speech.create(
-            model="tts-1",
-            voice="nova",
-            input=reply_text,
-        )
+        speech_response = await openai_service.tts(reply_text)
 
         # ToDo save audio stream to audio file and upload to storage
-
-        # sanitized = StringUtils.sanitize_filename(reply_text)
         import base64
         reply_text_b64 = base64.b64encode(reply_text.encode("utf-8")).decode("ascii")
         audio_byte = await speech_response.aread()
