@@ -4,18 +4,15 @@ from typing import List
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
-from app.db import async_session
-from app.dtos.openai_dto import ChatRequest
 from app.dtos.response_dto import api_response
 from app.models import User
 from app.models.conversation import Conversation
 from app.models.message import Message
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime
 from app.db import get_db
 from app.service.auth_service import get_current_user
-from app.service.gtts_service import create_audio_and_upload
-from app.service.openai_service import generate_title, chat_with_gpt, translate_text
+from app.service.openai_service import generate_title
 
 router = APIRouter()
 
@@ -204,47 +201,3 @@ async def save_messages(
         await session.rollback()
         raise HTTPException(status_code=500, detail=str(e))
 
-
-import time
-import logging
-
-logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO)
-
-
-@router.post("/text-chat")
-async def chat(
-        payload: ChatRequest,
-        current_user: User = Depends(get_current_user)):
-    start_time = time.time()
-    logger.info("💬 Chat API called")
-
-    try:
-        # Call OpenAI
-        openai_start = time.time()
-        reply = await chat_with_gpt(payload)
-        logger.info(f"🧠 OpenAI response time: {time.time() - openai_start:.2f} sec")
-
-        # Translate
-        translate_start = time.time()
-        translated_text = await translate_text(reply, payload.language)
-        logger.info(f"🌍 Translation time: {time.time() - translate_start:.2f} sec")
-
-        # TTS
-        tts_start = time.time()
-        audio_url = await create_audio_and_upload(reply, payload.language)
-        logger.info(f"🔊 TTS time: {time.time() - tts_start:.2f} sec")
-
-        logger.info(f"✅ Total chat endpoint time: {time.time() - start_time:.2f} sec")
-
-        response_data = {
-            "role": "assistant",
-            "content": reply,
-            "translatedContent": translated_text,
-            "audioUrl": audio_url
-        }
-
-        return api_response(200, "success", response_data)
-    except Exception as e:
-        logger.exception("❌ Chat API failed")
-        raise HTTPException(status_code=500, detail=str(e))

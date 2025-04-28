@@ -2,7 +2,7 @@ from dotenv import load_dotenv
 from fastapi import HTTPException
 from openai import AsyncClient
 import os
-
+import uuid
 from app.dtos.openai_dto import ChatRequest
 
 load_dotenv()
@@ -56,3 +56,14 @@ async def translate_text(text: str, target_language: str) -> str:
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
+async def generate_openai_tts(text: str, voice: str = "nova") -> str:
+    filename = f"{uuid.uuid4()}.mp3"
+    response = await client.audio.speech.create(
+        model="tts-1",
+        voice=voice,
+        input=text
+    )
+    with open(filename, "wb") as f:
+        f.write(response.content)
+    return filename
