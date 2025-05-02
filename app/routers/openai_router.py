@@ -4,7 +4,6 @@ import time
 import logging
 from dotenv import load_dotenv
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Depends
-from fastapi.responses import JSONResponse
 import openai
 from starlette.responses import StreamingResponse
 
@@ -12,9 +11,8 @@ from app.dtos.openai_dto import ChatRequest, TranslateRequest
 from app.dtos.response_dto import api_response
 from app.models import User
 from app.service.auth_service import get_current_user
-from app.service.gtts_service import create_audio_and_upload
+from app.service.file_storage_service import FileStorageService
 from app.service.openai_service import OpenAIService
-from app.utils.string_utils import StringUtils
 
 load_dotenv()
 openai.api_key = os.getenv("OPENAI_API_KEY")
@@ -22,12 +20,13 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
 router = APIRouter()
+file_storage_service = FileStorageService()
+openai_service = OpenAIService()
 
 
 @router.post("/chat")
 async def chat(data: ChatRequest, current_user: User = Depends(get_current_user)):
     try:
-        openai_service = OpenAIService()
         reply = await openai_service.chat_with_history(data)
         return api_response(200, "success", reply)
     except Exception as e:
@@ -37,7 +36,6 @@ async def chat(data: ChatRequest, current_user: User = Depends(get_current_user)
 @router.post("/translate")
 async def translate(data: TranslateRequest, current_user: User = Depends(get_current_user)):
     try:
-        openai_service = OpenAIService()
         translated_text = await openai_service.translate_text(data.text, data.target_language)
         return api_response(200, "success", translated_text)
 
@@ -51,7 +49,6 @@ async def transcribe_audio(
         language: str = Form(None),
         current_user: User = Depends(get_current_user)):
     try:
-        openai_service = OpenAIService()
         response_text = await openai_service.transcribe(audio_file, language)
         return api_response(200, "success", response_text)
 
@@ -67,7 +64,6 @@ async def text_chat(
     logger.info("💬 Chat API called")
 
     try:
-        openai_service = OpenAIService()
         # Call OpenAI
         openai_start = time.time()
         reply = await openai_service.chat_with_history(payload)
@@ -80,9 +76,10 @@ async def text_chat(
 
         # TTS
         tts_start = time.time()
-        audio_url = await create_audio_and_upload(reply, payload.language)
+        mp3_file = await openai_service.generate_openai_tts(reply)
         logger.info(f"🔊 TTS time: {time.time() - tts_start:.2f} sec")
-
+        audio_url = await file_storage_service.upload_to_supabase_async(mp3_file)
+        # audio_url = await create_audio_and_upload(reply, payload.language)
         logger.info(f"✅ Total chat endpoint time: {time.time() - start_time:.2f} sec")
 
         response_data = {
@@ -104,7 +101,6 @@ async def voice_chat(
     language: str = Form("ja"),  # or auto-detect
     current_user: User = Depends(get_current_user)
 ):
-    openai_service = OpenAIService()
     start_time = time.time()
     logger.info("💬 Voice Chat API called")
 
