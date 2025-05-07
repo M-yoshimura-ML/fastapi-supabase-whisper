@@ -4,12 +4,13 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from app.routers import user_router, openai_router, tts_router, history_router, auth_router
+from app.routers import user_router, openai_router, tts_router, history_router
 from app.exceptions.exception_handler import (
     custom_http_exception_handler,
     validation_exception_handler,
     general_exception_handler
 )
+from app.routers.auth_router import AuthController
 
 app = FastAPI()
 logging = logging.getLogger(__name__)
@@ -37,15 +38,13 @@ app.add_exception_handler(StarletteHTTPException, custom_http_exception_handler)
 app.add_exception_handler(RequestValidationError, validation_exception_handler)
 app.add_exception_handler(Exception, general_exception_handler)
 
+# Controllers
+auth_controller = AuthController()
 # include your routers
 app.include_router(user_router.router)
 app.include_router(openai_router.router)
 app.include_router(tts_router.router)
 app.include_router(history_router.router)
-app.include_router(auth_router.router)
+app.include_router(auth_controller.router)
 
-
-@app.get("/notfound")
-async def not_found():
-    raise HTTPException(status_code=404, detail="Item not found")
 
