@@ -13,6 +13,7 @@ from app.service.history_service import HistoryService
 from app.service.openai_service import OpenAIService
 
 router = APIRouter()
+history_service = HistoryService()
 
 
 @router.post("/history")
@@ -27,8 +28,6 @@ async def save_history(
             # ToDo get language setting
             auto_title = await openai_service.generate_title(all_texts, language="en")
             data.title = auto_title
-
-        history_service = HistoryService()
 
         conversation = Conversation(
             id=uuid.uuid4(),
@@ -56,7 +55,6 @@ async def get_user_history(
         session: AsyncSession = Depends(get_db),
         current_user: User = Depends(get_current_user)):
     try:
-        history_service = HistoryService()
         conversations = await history_service.get_user_conversations(user_id, session)
         history = await history_service.get_history(conversations, session)
 
@@ -71,7 +69,6 @@ async def get_user_conversations(
         session: AsyncSession = Depends(get_db),
         current_user: User = Depends(get_current_user)):
     try:
-        history_service = HistoryService()
         conversation_list = await history_service.get_conversation_list(user_id, session)
 
         return api_response(200, "success", conversation_list)
@@ -85,7 +82,6 @@ async def get_conversation_messages(
         session: AsyncSession = Depends(get_db),
         current_user: User = Depends(get_current_user)):
     try:
-        history_service = HistoryService()
         message_list = await history_service.get_message_list(conversation_id, session)
 
         return api_response(200, "success", message_list)
@@ -99,7 +95,6 @@ async def save_messages(
         session: AsyncSession = Depends(get_db),
         current_user: User = Depends(get_current_user)):
     try:
-        history_service = HistoryService()
         conversation = await history_service.get_conversation(data.conversationId, session)
         if not conversation:
             return api_response(400, "Invalid conversationId")
