@@ -4,7 +4,7 @@ from sqlalchemy.future import select
 
 from app.db import get_db
 from app.dtos.auth_dto import SignUpRequest, LoginRequest
-from app.exceptions.exceptions import UserAlreadyExistsException
+from app.exceptions.exceptions import UserAlreadyExistsException, InvalidCredentialException
 from app.models.user import User
 from app.dtos.user_dto import UserCreate
 import uuid
@@ -54,7 +54,7 @@ class UserService:
         user = await self.get_user_by_email(request.email, db)
 
         if not user or not self.auth_service.verify_password(request.password, user.password):
-            raise HTTPException(status_code=401, detail="Invalid credentials")
+            raise InvalidCredentialException()
 
         token = self.auth_service.create_access_token({"sub": str(user.id)})
         return token
