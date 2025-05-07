@@ -3,3 +3,9 @@ class UserAlreadyExistsException(Exception):
         self.message = message
         super().__init__(self.message)
 
+
+class InvalidCredentialException(Exception):
+    def __init__(self, message="Invalid credentials"):
+        self.message = message
+        super().__init__(self.message)
+
