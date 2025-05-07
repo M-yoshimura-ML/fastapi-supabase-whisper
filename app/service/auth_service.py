@@ -2,7 +2,6 @@ from passlib.context import CryptContext
 from jose import jwt, JWTError
 from fastapi.security import OAuth2PasswordBearer
 from fastapi import Depends, HTTPException, status
-from sqlalchemy.orm import Session
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime, timedelta, timezone
@@ -22,21 +21,20 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
 
-def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+class AuthService:
+    def hash_password(self, password: str) -> str:
+        return pwd_context.hash(password)
 
+    def verify_password(self, plain_pw: str, hashed_pw: str) -> bool:
+        return pwd_context.verify(plain_pw, hashed_pw)
 
-def verify_password(plain_pw: str, hashed_pw: str) -> bool:
-    return pwd_context.verify(plain_pw, hashed_pw)
-
-
-def create_access_token(data: dict, expire_delta: timedelta = None):
-    to_encode = data.copy()
-    expire = datetime.now(timezone.utc) + (expire_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
-    to_encode.update({"exp": expire})
-    print("expire:", expire)
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    return encoded_jwt
+    def create_access_token(self, data: dict, expire_delta: timedelta = None):
+        to_encode = data.copy()
+        expire = datetime.now(timezone.utc) + (expire_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+        to_encode.update({"exp": expire})
+        print("expire:", expire)
+        encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+        return encoded_jwt
 
 
 def decode_access_token(token: str):

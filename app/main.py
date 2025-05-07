@@ -2,9 +2,10 @@ import logging
 from fastapi import FastAPI, HTTPException
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.routers import user_router, openai_router, tts_router, history_router, auth_router
-from app.routers.exception_handler import (
+from app.exceptions.exception_handler import (
     custom_http_exception_handler,
     validation_exception_handler,
     general_exception_handler
@@ -32,7 +33,7 @@ app.add_middleware(
 #         await conn.run_sync(Base.metadata.create_all)
 
 # custom exception handlers
-app.add_exception_handler(HTTPException, custom_http_exception_handler)
+app.add_exception_handler(StarletteHTTPException, custom_http_exception_handler)
 app.add_exception_handler(RequestValidationError, validation_exception_handler)
 app.add_exception_handler(Exception, general_exception_handler)
 
@@ -42,4 +43,9 @@ app.include_router(openai_router.router)
 app.include_router(tts_router.router)
 app.include_router(history_router.router)
 app.include_router(auth_router.router)
+
+
+@app.get("/notfound")
+async def not_found():
+    raise HTTPException(status_code=404, detail="Item not found")
 
