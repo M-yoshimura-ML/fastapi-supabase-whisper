@@ -7,9 +7,6 @@ from app.models import User
 from app.service.auth_service import AuthService, get_current_user
 from app.service.user_service import UserService
 
-# auth_service = AuthService()
-# user_uservice = UserService()
-
 
 class AuthController:
     def __init__(self):
