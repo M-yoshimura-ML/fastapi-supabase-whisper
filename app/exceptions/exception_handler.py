@@ -1,11 +1,13 @@
 from fastapi import Request, HTTPException
 from fastapi.exceptions import RequestValidationError
 from starlette.status import (
-    HTTP_500_INTERNAL_SERVER_ERROR, HTTP_400_BAD_REQUEST, HTTP_401_UNAUTHORIZED, HTTP_404_NOT_FOUND
+    HTTP_500_INTERNAL_SERVER_ERROR, HTTP_400_BAD_REQUEST, HTTP_401_UNAUTHORIZED, HTTP_404_NOT_FOUND, HTTP_403_FORBIDDEN
 )
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from app.dtos.response_dto import api_response
-from app.exceptions.exceptions import UserAlreadyExistsException, InvalidCredentialException, NotFoundException
+from app.exceptions.exceptions import (
+    UserAlreadyExistsException, InvalidCredentialException, NotFoundException, NoAccessConversationException
+)
 
 
 async def custom_http_exception_handler(request: Request, exc: StarletteHTTPException):
@@ -29,6 +31,12 @@ async def custom_http_exception_handler(request: Request, exc: StarletteHTTPExce
     if isinstance(exc.__context__, InvalidCredentialException):
         return api_response(
             status=HTTP_401_UNAUTHORIZED,
+            message=str(exc.__context__)
+        )
+
+    if isinstance(exc.__context__, NoAccessConversationException):
+        return api_response(
+            status=HTTP_403_FORBIDDEN,
             message=str(exc.__context__)
         )
 

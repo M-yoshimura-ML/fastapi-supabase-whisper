@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from typing import List
+from typing import List, Dict
 
 from fastapi import Depends, HTTPException
 from sqlalchemy import select
@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
 from app.dtos.history_dto import MessageBase
+from app.exceptions.exceptions import NoAccessConversationException
 from app.models import Message, Conversation
 
 
@@ -17,6 +18,21 @@ class HistoryService:
             select(Message).where(Message.conversation_id == conversation_id).order_by(Message.created_at.asc())
         )
         messages = result.scalars().all()
+        return messages
+
+    async def get_message_list_if_owner(self, conversation_id: str, user_id: str, session: AsyncSession):
+        result = await session.execute(
+            select(Message)
+            .join(Conversation)
+            .where(
+                Message.conversation_id == conversation_id,
+                Conversation.user_id == user_id
+            )
+            .order_by(Message.created_at.asc())
+        )
+        messages = result.scalars().all()
+        if not messages:
+            raise NoAccessConversationException()
         return messages
 
     async def get_conversation(self, conversation_id: str, session: AsyncSession = Depends(get_db)):
@@ -33,7 +49,7 @@ class HistoryService:
         conversations = result.scalars().all()
         return conversations
 
-    async def get_conversation_list(self, user_id, session: AsyncSession = Depends(get_db)):
+    async def get_conversation_list(self, user_id: str, session: AsyncSession = Depends(get_db)):
         conversations = await self.get_user_conversations(user_id, session)
 
         conversation_list = []
@@ -47,8 +63,25 @@ class HistoryService:
 
         return conversation_list
 
-    async def get_message_list(self, conversation_id, session: AsyncSession = Depends(get_db)):
-        messages = await self.get_message(conversation_id, session)
+    async def save_conversation(self, user_id: str, title: str, session: AsyncSession = Depends(get_db)):
+        conversation = Conversation(
+            id=uuid.uuid4(),
+            user_id=user_id,
+            title=title,
+            created_at=datetime.now()
+        )
+        session.add(conversation)
+        # reflect conversation.id in DB
+        await session.flush()
+        return conversation
+
+    async def get_message_list(
+            self,
+            conversation_id: str,
+            user_id: str,
+            session: AsyncSession = Depends(get_db)) -> List[Dict]:
+        # messages = await self.get_message(conversation_id, session)
+        messages = await self.get_message_list_if_owner(conversation_id, user_id, session)
 
         message_list = []
         for message in messages:
@@ -67,14 +100,14 @@ class HistoryService:
     async def save_messages(
             self,
             data: List[MessageBase],
-            conversationId: str,
+            conversation_id: str,
             session: AsyncSession = Depends(get_db)):
         try:
-            if conversationId:
+            if conversation_id:
                 for m in data:
                     message = Message(
                         id=uuid.uuid4(),
-                        conversation_id=conversationId,
+                        conversation_id=conversation_id,
                         role=m.role,
                         content=m.content,
                         translated_content=m.translatedContent,
@@ -88,7 +121,7 @@ class HistoryService:
             await session.rollback()
             raise HTTPException(status_code=500, detail=str(e))
 
-    async def get_history(self, conversations, session: AsyncSession = Depends(get_db)):
+    async def get_history(self, conversations, session: AsyncSession = Depends(get_db)) -> List[Dict]:
         try:
             history = []
             for conv in conversations:

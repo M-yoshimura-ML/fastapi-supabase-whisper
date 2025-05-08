@@ -11,10 +11,6 @@ from app.service.auth_service import get_current_user
 from app.service.file_storage_service import FileStorageService
 from app.service.gtts_service import GttsService
 
-# router = APIRouter()
-# file_storage_service = FileStorageService()
-# gtts_service = GttsService()
-
 
 class TTSRequest(BaseModel):
     text: str
