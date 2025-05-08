@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta, timezone
+
 from fastapi import Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -35,6 +37,11 @@ class UserService:
         user = result.scalar_one_or_none()
         return user
 
+    async def get_user_by_id(self, user_id: str, db: AsyncSession = Depends(get_db)) -> User:
+        result = await db.execute(select(User).where(User.id == user_id))
+        user = result.scalar_one_or_none()
+        return user
+
     async def register_user(self, request: SignUpRequest, db: AsyncSession = Depends(get_db)):
         user = await self.get_user_by_email(request.email, db)
         if user:
@@ -55,6 +62,22 @@ class UserService:
 
         if not user or not self.auth_service.verify_password(request.password, user.password):
             raise InvalidCredentialException()
+
+        otp = self.auth_service.generate_otp()
+        user.otp_code = otp
+        user.otp_expires_at = datetime.now() + timedelta(minutes=30)
+        db.add(user)
+        await db.commit()
+
+        # send email
+        await self.auth_service.send_otp_email(user.email, otp)
+        return str(user.id)
+
+    async def verify_otp(self, user_id: str, otp: str, db: AsyncSession = Depends(get_db)):
+        user = await self.get_user_by_id(user_id, db)
+
+        if not user or user.otp_code != otp or user.otp_expires_at < datetime.now():
+            raise InvalidCredentialException("OTP is invalid or expired.")
 
         token = self.auth_service.create_access_token({"sub": str(user.id)})
         return token
