@@ -1,3 +1,5 @@
+import random
+
 from passlib.context import CryptContext
 from jose import jwt, JWTError
 from fastapi.security import OAuth2PasswordBearer
@@ -11,6 +13,7 @@ from dotenv import load_dotenv
 from app.db import get_db
 from app.exceptions.exceptions import InvalidCredentialException, NotFoundException
 from app.models.user import User
+from app.service.email_service import EmailService
 
 load_dotenv()
 
@@ -23,6 +26,9 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
 
 class AuthService:
+    def __init__(self):
+        self.email_service = EmailService()
+
     def hash_password(self, password: str) -> str:
         return pwd_context.hash(password)
 
@@ -36,6 +42,17 @@ class AuthService:
         print("expire:", expire)
         encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
         return encoded_jwt
+
+    def generate_otp(self) -> str:
+        return f"{random.randint(100000, 999999)}"
+
+    async def send_otp_email(self, user_email: str, otp: str):
+        subject = "【AI Voice Chat】2段階認証コードのお知らせ"
+        body = f"""
+        あなたの認証コードは {otp} です。
+        このコードは5分以内に有効です。
+        """
+        self.email_service.send_text_email(to_email=user_email, subject=subject, body=body)
 
 
 def decode_access_token(token: str):

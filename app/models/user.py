@@ -14,4 +14,6 @@ class User(Base):
     name = Column(String)
     password = Column(String)
     preferred_language = Column(String, default="ja")
+    otp_code = Column(String, nullable=True)
+    otp_expires_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.now)

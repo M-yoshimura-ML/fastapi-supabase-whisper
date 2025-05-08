@@ -23,7 +23,12 @@ class AuthController:
 
         @self.router.post("/login")
         async def login(request: LoginRequest, db: AsyncSession = Depends(get_db)):
-            token = await self.user_uservice.authenticate(request, db)
+            user_id = await self.user_uservice.authenticate(request, db)
+            return api_response(200, "success", {"user_id": user_id})
+
+        @self.router.post("/mfa")
+        async def mfa(user_id: str, otp: str, db: AsyncSession = Depends(get_db)):
+            token = await self.user_uservice.verify_otp(user_id, otp, db)
             data = {"access_token": token, "token_type": "Bearer"}
             return api_response(200, "success", data)
 
