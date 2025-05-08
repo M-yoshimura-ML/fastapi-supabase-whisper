@@ -47,7 +47,7 @@ class AuthService:
         return f"{random.randint(100000, 999999)}"
 
     async def send_otp_email(self, user_email: str, otp: str):
-        subject = "【Cymbal Direct】2段階認証コードのお知らせ"
+        subject = "【AI Voice Chat】2段階認証コードのお知らせ"
         body = f"""
         あなたの認証コードは {otp} です。
         このコードは5分以内に有効です。
