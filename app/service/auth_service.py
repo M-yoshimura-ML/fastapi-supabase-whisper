@@ -50,7 +50,7 @@ class AuthService:
         subject = "【AI Voice Chat】2段階認証コードのお知らせ"
         body = f"""
         あなたの認証コードは {otp} です。
-        このコードは5分以内に有効です。
+        このコードは30分以内有効です。
         """
         self.email_service.send_text_email(to_email=user_email, subject=subject, body=body)
 
