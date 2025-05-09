@@ -11,12 +11,13 @@ client = AsyncClient(api_key=os.getenv("OPENAI_API_KEY"))
 
 class OpenAIService:
     async def generate_title(self, message: list[str], language: str = "ja") -> str:
+        conversation = "\n".join(message)
         prompt = f"""
         There are conversations with AI below. 
         Summarize these conversations then make title with {language} and 10 to 20 characters.
         
         Conversations:
-        {'\n'.join(message)}
+        {conversation}
         """
 
         response = await client.chat.completions.create(
