@@ -14,6 +14,7 @@ from app.routers.auth_router import AuthController
 from app.routers.history_router import HistoryController
 from app.routers.openai_router import OpenAIController
 from app.routers.tts_router import TTSController
+from app.routers.user_router import UserController
 
 app = FastAPI()
 logging = logging.getLogger(__name__)
@@ -42,12 +43,13 @@ app.add_exception_handler(RequestValidationError, validation_exception_handler)
 app.add_exception_handler(Exception, general_exception_handler)
 
 # Controllers
+user_controller = UserController()
 auth_controller = AuthController()
 openai_controller = OpenAIController()
 tts_controller = TTSController()
 history_controller = HistoryController()
 # include your routers
-app.include_router(user_router.router)
+app.include_router(user_controller.router)
 app.include_router(openai_controller.router)
 app.include_router(tts_controller.router)
 app.include_router(history_controller.router)
