@@ -8,7 +8,7 @@ from app.db import get_db
 from app.dtos.auth_dto import SignUpRequest, LoginRequest
 from app.exceptions.exceptions import UserAlreadyExistsException, InvalidCredentialException
 from app.models.user import User
-from app.dtos.user_dto import UserCreate
+from app.dtos.user_dto import UserCreate, SettingsUpdateRequest
 import uuid
 
 from app.service.auth_service import AuthService
@@ -81,3 +81,31 @@ class UserService:
 
         token = self.auth_service.create_access_token({"sub": str(user.id)})
         return token
+
+    def get_user_preferences(self, current_user: User):
+        return {
+            "language": current_user.preferred_language,
+            "textModel": current_user.preferred_text_model,
+            "speechModel": current_user.preferred_speech_model,
+            "transcribeModel": current_user.preferred_transcribe_model,
+            "useHistory": current_user.use_history,
+            "promptTemplate": current_user.prompt_template,
+        }
+
+    async def save_user_preferences(self, user: User, update: SettingsUpdateRequest, db: AsyncSession = Depends(get_db)):
+        if update.language:
+            user.preferred_language = update.language
+        if update.textModel:
+            user.preferred_text_model = update.textModel
+        if update.speechModel:
+            user.preferred_speech_model = update.speechModel
+        if update.transcribeModel:
+            user.preferred_transcribe_model = update.transcribeModel
+        if update.useHistory:
+            user.use_history = update.useHistory
+        if update.promptTemplate:
+            user.prompt_template = update.promptTemplate
+
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)

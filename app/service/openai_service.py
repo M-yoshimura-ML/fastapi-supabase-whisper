@@ -21,7 +21,7 @@ class OpenAIService:
         """
 
         response = await client.chat.completions.create(
-            model="gpt-4-0613",
+            model="gpt-4o-mini",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.5
         )
@@ -31,7 +31,7 @@ class OpenAIService:
     async def chat_with_text(self, text: str):
         try:
             chat_response = await client.chat.completions.create(
-                model="gpt-4-0613",
+                model="gpt-4o-mini",
                 messages=[{"role": "user", "content": text}],
             )
             reply_text = chat_response.choices[0].message.content
@@ -45,7 +45,7 @@ class OpenAIService:
             messages.append({"role": "user", "content": data.message})
 
             response = await client.chat.completions.create(
-                model="gpt-4-0613",
+                model="gpt-4o-mini",
                 messages=messages
             )
             reply = response.choices[0].message.content

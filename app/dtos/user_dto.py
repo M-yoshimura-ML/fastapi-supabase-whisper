@@ -19,3 +19,13 @@ class UserResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class SettingsUpdateRequest(BaseModel):
+    language: Optional[str] = None
+    textModel: Optional[str] = None
+    speechModel: Optional[str] = None
+    transcribeModel: Optional[str] = None
+    useHistory: Optional[bool] = None
+    promptTemplate: Optional[str] = None
+
