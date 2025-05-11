@@ -105,6 +105,8 @@ class UserService:
             user.use_history = update.useHistory
         if update.promptTemplate:
             user.prompt_template = update.promptTemplate
+        else:
+            user.prompt_template = ""
 
         db.add(user)
         await db.commit()
