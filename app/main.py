@@ -1,15 +1,15 @@
 import logging
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from app.routers import user_router
 from app.exceptions.exception_handler import (
     custom_http_exception_handler,
     validation_exception_handler,
     general_exception_handler
 )
+from app.routers import websocket_router
 from app.routers.auth_router import AuthController
 from app.routers.history_router import HistoryController
 from app.routers.openai_router import OpenAIController
@@ -54,5 +54,5 @@ app.include_router(openai_controller.router)
 app.include_router(tts_controller.router)
 app.include_router(history_controller.router)
 app.include_router(auth_controller.router)
-
+app.include_router(websocket_router.router)
 
