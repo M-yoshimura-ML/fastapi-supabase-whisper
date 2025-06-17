@@ -17,6 +17,7 @@ class EmailService:
         self.smtp_user = os.getenv("SMTP_USER")
         self.smtp_password = os.getenv("SMTP_PASSWORD")
         self.from_email = os.getenv("FROM_EMAIL")
+        self.use_ssl = os.getenv("SMTP_USE_SSL", "false").lower() == "true"
 
     def send_text_email(self, to_email: str, subject: str, body: str):
         msg = MIMEText(body)
@@ -25,9 +26,16 @@ class EmailService:
         msg["To"] = to_email
 
         try:
-            with smtplib.SMTP_SSL(self.smtp_host, self.smtp_port) as server:
-                server.login(self.smtp_user, self.smtp_password)
-                server.send_message(msg)
+            if self.use_ssl:
+                with smtplib.SMTP_SSL(self.smtp_host, self.smtp_port) as server:
+                    server.login(self.smtp_user, self.smtp_password)
+                    server.send_message(msg)
+            else:
+                with smtplib.SMTP(self.smtp_host, self.smtp_port) as server:
+                    server.ehlo()
+                    server.starttls()
+                    server.login(self.smtp_user, self.smtp_password)
+                    server.send_message(msg)
             logger.info("Email sent successfully")
         except Exception as e:
             logger.error("Failed to send email")
@@ -43,9 +51,16 @@ class EmailService:
         msg.attach(html_part)
 
         try:
-            with smtplib.SMTP_SSL(self.smtp_host, self.smtp_port) as server:
-                server.login(self.smtp_user, self.smtp_password)
-                server.send_message(msg)
+            if self.use_ssl:
+                with smtplib.SMTP_SSL(self.smtp_host, self.smtp_port) as server:
+                    server.login(self.smtp_user, self.smtp_password)
+                    server.send_message(msg)
+            else:
+                with smtplib.SMTP(self.smtp_host, self.smtp_port) as server:
+                    server.ehlo()
+                    server.starttls()
+                    server.login(self.smtp_user, self.smtp_password)
+                    server.send_message(msg)
             logger.info("Email sent successfully")
         except Exception as e:
             logger.error("Failed to send email")
