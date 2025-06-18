@@ -1,4 +1,7 @@
 import logging
+import os
+
+from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
@@ -16,13 +19,16 @@ from app.routers.openai_router import OpenAIController
 from app.routers.tts_router import TTSController
 from app.routers.user_router import UserController
 
-app = FastAPI()
+load_dotenv()
+
 logging = logging.getLogger(__name__)
 
 origins = [
     "http://localhost:3000",  # Next.js server URL
-    "http://localhost:3001",
+    os.getenv("NEXT_AI_VOICE_URL")
 ]
+
+app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
