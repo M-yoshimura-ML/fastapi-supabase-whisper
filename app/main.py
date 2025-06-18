@@ -25,8 +25,9 @@ logging = logging.getLogger(__name__)
 
 origins = [
     "http://localhost:3000",  # Next.js server URL
-    os.getenv("NEXT_AI_VOICE_URL")
+    "https://next-ai-voice-chat.vercel.app"
 ]
+logging.info(origins)
 
 app = FastAPI()
 
